@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nixie Net</title>
+  <link href="https://fonts.googleapis.com/css2?family=Nixie+One&display=swap" rel="stylesheet">
+  <style>
+
+/* While loading, hide dashboard details */
+body.is-loading #app{
+  filter: blur(10px) brightness(0.35) contrast(0.9);
+  opacity: 0.10;
+  pointer-events: none;
+}
+
+/* Loader overlay stays on top */
+.loading{
+  position:fixed; inset:0;
+  background: rgba(5,5,5,0.88);
+  display:flex; align-items:center; justify-content:center;
+  z-index: 10000;
+  transition: opacity .45s ease;
+}
+
+/* Big “plate” ~50% of screen */
+.loading-inner{
+  width: min(50vw, 900px);
+  height: min(50vh, 520px);
+  display:flex;
+  flex-direction: column;
+  align-items:center;
+  justify-content:center;
+  gap: 14px;
+
+  text-align:center;
+  border: 1px solid #3a1500;
+  border-radius: 16px;
+  background: rgba(13,13,13,0.72);
+  box-shadow: 0 0 30px rgba(255,80,0,0.12), inset 0 0 30px rgba(0,0,0,0.65);
+  animation: loaderWarm 1.25s ease-in-out infinite;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Optional: a soft moving “glow sweep” to make it feel alive */
+.loading-inner::after{
+  content:'';
+  position:absolute;
+  top:-60%;
+  left:-40%;
+  width: 180%;
+  height: 180%;
+  background: radial-gradient(circle at 50% 50%,
+    rgba(255,102,0,0.10),
+    rgba(255,68,0,0.05),
+    transparent 60%);
+  transform: rotate(12deg);
+  animation: glowSweep 2.6s linear infinite;
+  pointer-events:none;
+}
+
+@keyframes glowSweep{
+  0%   { transform: translateX(-8%) translateY(0%) rotate(12deg); opacity: .55; }
+  50%  { transform: translateX(8%)  translateY(2%) rotate(12deg); opacity: .85; }
+  100% { transform: translateX(-8%) translateY(0%) rotate(12deg); opacity: .55; }
+}
+
+.loading.hide{ opacity:0; pointer-events:none; }
+
+    :root {
+      --amber: #ff6600;
+      --glow:  #ff4400;
+      --label: #7a3300;
+      --bg:    #050505;
+      --tube:  #0d0d0d;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--bg);
+      font-family: 'Nixie One', monospace;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 16px;
+      color: var(--amber);
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.07) 2px,
+        rgba(0,0,0,0.07) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    h1 {
+      font-size: 0.9rem;
+      letter-spacing: 0.5em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+      color: var(--label);
+    }
+
+    .panel {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
+      gap: 8px;
+      width: 100%;
+      max-width: 1250px;
+    }
+
+    @keyframes warmup {
+      0%   { opacity: 0.04; filter: brightness(0.1); }
+      35%  { opacity: 0.25; filter: brightness(0.4); }
+      50%  { opacity: 0.85; filter: brightness(1.3); }
+      65%  { opacity: 0.45; filter: brightness(0.7); }
+      80%  { opacity: 0.92; filter: brightness(1.1); }
+      100% { opacity: 1;    filter: brightness(1);   }
+    }
+
+    .tube {
+      background: var(--tube);
+      border: 1px solid #1e0a00;
+      border-radius: 10px;
+      padding: 35px 12px 8px;
+      text-align: center;
+      box-shadow: 0 0 15px rgba(255,80,0,0.07), inset 0 0 20px rgba(0,0,0,0.6);
+      animation: warmup 1.4s ease-out both;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .tube:nth-child(1)  { animation-delay: 0.00s; }
+    .tube:nth-child(2)  { animation-delay: 0.07s; }
+    .tube:nth-child(3)  { animation-delay: 0.14s; }
+    .tube:nth-child(4)  { animation-delay: 0.21s; }
+    .tube:nth-child(5)  { animation-delay: 0.28s; }
+    .tube:nth-child(6)  { animation-delay: 0.35s; }
+    .tube:nth-child(7)  { animation-delay: 0.42s; }
+    .tube:nth-child(8)  { animation-delay: 0.49s; }
+    .tube:nth-child(9)  { animation-delay: 0.56s; }
+    .tube:nth-child(10) { animation-delay: 0.63s; }
+    .tube:nth-child(11) { animation-delay: 0.70s; }
+    .tube:nth-child(12) { animation-delay: 0.77s; }
+    .tube:nth-child(13) { animation-delay: 0.84s; }
+    .tube:nth-child(14) { animation-delay: 0.91s; }
+    .tube:nth-child(15) { animation-delay: 0.98s; }
+
+    .tube-wide { grid-column: span 2; }
+    .tube-full { grid-column: 1 / -1; }
+
+    .label {
+      font-size: 0.8rem;
+      color: var(--label);
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      margin-bottom: 5px;
+      position: relative;
+      z-index: 2;
+    }
+    .value {
+      font-size: 1.9rem;
+      text-shadow: 0 0 4px var(--glow), 0 0 12px var(--glow), 0 0 28px rgba(255,80,0,0.35);
+      transition: color 0.3s;
+      position: relative;
+      z-index: 2;
+      line-height: 1.1;
+    }
+    .unit {
+      font-size: 0.8rem;
+      color: var(--label);
+      letter-spacing: 0.25em;
+      margin-top: 3px;
+      text-transform: uppercase;
+      position: relative;
+      z-index: 2;
+    }
+
+    .sparkline {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 55%;
+      opacity: 0.3;
+      pointer-events: none;
+      z-index: 1;
+      border-radius: 0 0 10px 10px;
+    }
+
+    .graph-wrap {
+      position: relative;
+      width: 100%;
+      height: 170px;
+      margin-top: 4px;
+    }
+    #net-graph {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+    .graph-legend {
+      display: flex;
+      justify-content: flex-end;
+      gap: 24px;
+      margin-top: 6px;
+      font-size: 0.75rem;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+    }
+    .leg-down { color: #ff6600; }
+    .leg-up   { color: #ff9944; }
+
+    #graph-tooltip {
+      position: absolute;
+      background: rgba(10,5,0,0.93);
+      border: 1px solid #3a1500;
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 0.72rem;
+      letter-spacing: 0.15em;
+      color: var(--amber);
+      pointer-events: none;
+      display: none;
+      z-index: 10;
+      white-space: nowrap;
+    }
+
+    .dt-row { display: flex; justify-content: center; align-items: baseline; gap: 4px; flex-wrap: wrap; }
+    .dt-seg { display: flex; flex-direction: column; align-items: center; }
+    .dt-val {
+      font-size: 1.65rem;
+      text-shadow: 0 0 4px var(--glow), 0 0 12px var(--glow), 0 0 28px rgba(255,80,0,0.35);
+      line-height: 1;
+    }
+    .dt-sub { font-size: 0.65rem; color: var(--label); letter-spacing: 0.2em; margin-top: 4px; }
+    .dt-sep { font-size: 1.45rem; color: var(--label); padding: 0 2px; line-height: 1; align-self: flex-start; margin-top: 2px; }
+
+    @keyframes flicker {
+      0%, 100% { opacity: 1;    }
+      30%       { opacity: 0.75; }
+      60%       { opacity: 0.9;  }
+    }
+    .flicker { animation: flicker 0.08s ease-in-out; }
+  </style>
+</head>
+<body>
+  <div id="loading" class="loading">
+  <div class="loading-inner">
+    <div class="loading-title">N I X I E &nbsp; N E T</div>
+    <div id="loading-msg" class="loading-msg">Tube warm‑up</div>
+    <div class="loading-dots" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div class="loading-sub">Waiting for live stream…</div>
+  </div>
+</div>
+<div id="app">
+
+  <h1>N E T W O R K &nbsp; M O N I T O R</h1>
+  <div class="panel">
+
+    <!-- Full-width network graph -->
+    <div class="tube tube-full">
+      <div class="label">Network Activity</div>
+      <div class="graph-wrap">
+        <canvas id="net-graph"></canvas>
+        <div id="graph-tooltip"></div>
+      </div>
+      <div class="graph-legend">
+        <span class="leg-down">▬ Download</span>
+        <span class="leg-up">▬ Upload</span>
+      </div>
+    </div>
+
+    <!-- Row 1 -->
+    <div class="tube">
+      <div class="label">Download</div>
+      <div class="value" id="down">--.--</div>
+      <div class="unit">Mbps</div>
+    </div>
+    <div class="tube">
+      <div class="label">Upload</div>
+      <div class="value" id="up">--.--</div>
+      <div class="unit">Mbps</div>
+    </div>
+    <div class="tube">
+      <div class="label">Ping</div>
+      <div class="value" id="ping">---</div>
+      <div class="unit">ms · google.com</div>
+      <canvas class="sparkline" id="ping-spark"></canvas>
+    </div>
+    <div class="tube">
+      <div class="label">CPU</div>
+      <div class="value" id="cpu">--.-</div>
+      <div class="unit">%</div>
+      <canvas class="sparkline" id="cpu-spark"></canvas>
+    </div>
+
+    <!-- Row 2 -->
+    <div class="tube">
+      <div class="label">RAM</div>
+      <div class="value" id="ram" style="font-size:1.3rem">-- / -- GB</div>
+      <div class="unit">used / total</div>
+      <canvas class="sparkline" id="ram-spark"></canvas>
+    </div>
+    <div class="tube">
+      <div class="label">Disk Space</div>
+      <div class="value" id="diskspace">--</div>
+      <div class="unit">%</div>
+    </div>
+    <div class="tube">
+      <div class="label">Disk Read</div>
+      <div class="value" id="diskread">--.--</div>
+      <div class="unit">MB/s</div>
+    </div>
+    <div class="tube">
+      <div class="label">Disk Write</div>
+      <div class="value" id="diskwrite">--.--</div>
+      <div class="unit">MB/s</div>
+    </div>
+
+    <!-- Row 3: IPs -->
+    <div class="tube">
+      <div class="label">Local IP</div>
+      <div class="value" id="localip" style="font-size:1.2rem">?.?.?.?</div>
+      <div class="unit">IPv4</div>
+    </div>
+    <div class="tube">
+      <div class="label">Public IP</div>
+      <div class="value" id="publicip" style="font-size:1.2rem">?.?.?.?</div>
+      <div class="unit">external</div>
+    </div>
+
+    <!-- Row 4: System stats -->
+    <div class="tube">
+      <div class="label">CPU Freq</div>
+      <div class="value" id="cpufreq">-.--</div>
+      <div class="unit">GHz</div>
+    </div>
+    <div class="tube">
+      <div class="label">Processes</div>
+      <div class="value" id="processes">---</div>
+      <div class="unit">running</div>
+    </div>
+    <div class="tube">
+      <div class="label">Swap</div>
+      <div class="value" id="swap" style="font-size:1.3rem">-- / -- GB</div>
+      <div class="unit">used / total</div>
+    </div>
+    <div class="tube">
+      <div class="label">TCP Connections</div>
+      <div class="value" id="tcpconns">--</div>
+      <div class="unit">established</div>
+    </div>
+
+    <!-- Row 5: DateTime -->
+    <div class="tube tube-wide">
+      <div class="label">Date · Time</div>
+      <div class="dt-row">
+        <div class="dt-seg"><div class="dt-val" id="dt-year" data-noflicker>----</div><div class="dt-sub">YEAR</div></div>
+        <div class="dt-sep">·</div>
+        <div class="dt-seg"><div class="dt-val" id="dt-mon"  data-noflicker>--</div><div class="dt-sub">MON</div></div>
+        <div class="dt-sep">·</div>
+        <div class="dt-seg"><div class="dt-val" id="dt-day"  data-noflicker>--</div><div class="dt-sub">DAY</div></div>
+        <div class="dt-sep" style="opacity:0.25;padding:0 8px">·</div>
+        <div class="dt-seg"><div class="dt-val" id="dt-hr"   data-noflicker>--</div><div class="dt-sub">HR</div></div>
+        <div class="dt-sep">:</div>
+        <div class="dt-seg"><div class="dt-val" id="dt-min"  data-noflicker>--</div><div class="dt-sub">MIN</div></div>
+        <div class="dt-sep">:</div>
+        <div class="dt-seg"><div class="dt-val" id="dt-sec"  data-noflicker>--</div><div class="dt-sub">SEC</div></div>
+      </div>
+    </div>
+
+  </div>
+  </div>
+
+  <script>
+    const id = document.getElementById.bind(document);
+
+    const SAMPLES = 60;
+    const SPARK_N = 30;
+
+    const downBuf = new Array(SAMPLES).fill(0);
+    const upBuf   = new Array(SAMPLES).fill(0);
+    const cpuBuf  = new Array(SPARK_N).fill(0);
+    const ramBuf  = new Array(SPARK_N).fill(0);
+    const pingBuf = new Array(SPARK_N).fill(0);
+
+    let peakDown = 0;
+    let hoverIdx = -1;
+
+    const PAD = { top: 14, right: 16, bottom: 30, left: 58 };
+
+    function flicker(el) {
+      el.classList.remove('flicker');
+      void el.offsetWidth;
+      el.classList.add('flicker');
+    }
+
+    function set(el, val) {
+      if (!el) return;
+      const str = String(val);
+      if (el.textContent !== str) {
+        el.textContent = str;
+      }
+    }
+
+
+    function drawSparkline(canvasEl, buf) {
+      if (!canvasEl) return;
+      const W = canvasEl.offsetWidth;
+      const H = canvasEl.offsetHeight;
+      if (!W || !H) return;
+      canvasEl.width  = W;
+      canvasEl.height = H;
+      const ctx = canvasEl.getContext('2d');
+      ctx.clearRect(0, 0, W, H);
+      const max = Math.max(1, ...buf);
+
+      ctx.beginPath();
+      for (let i = 0; i < buf.length; i++) {
+        const x = (W / (buf.length - 1)) * i;
+        const y = H - (buf[i] / max) * H * 0.88;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.lineTo(W, H); ctx.lineTo(0, H); ctx.closePath();
+      ctx.fillStyle = 'rgba(255,102,0,0.18)';
+      ctx.fill();
+
+      ctx.beginPath();
+      for (let i = 0; i < buf.length; i++) {
+        const x = (W / (buf.length - 1)) * i;
+        const y = H - (buf[i] / max) * H * 0.88;
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = '#ff6600';
+      ctx.lineWidth   = 1.5;
+      ctx.shadowColor = '#ff6600';
+      ctx.shadowBlur  = 6;
+      ctx.stroke();
+      ctx.shadowBlur  = 0;
+    }
+
+    function refreshSparklines() {
+      drawSparkline(id('cpu-spark'),  cpuBuf);
+      drawSparkline(id('ping-spark'), pingBuf);
+      drawSparkline(id('ram-spark'),  ramBuf);
+    }
+
+    function drawNetGraph() {
+      const canvas = id('net-graph');
+      const ctx    = canvas.getContext('2d');
+      const W = canvas.offsetWidth;
+      const H = canvas.offsetHeight;
+      if (canvas.width !== W || canvas.height !== H) {
+        canvas.width  = W;
+        canvas.height = H;
+      }
+      ctx.clearRect(0, 0, W, H);
+
+      const gW = W - PAD.left - PAD.right;
+      const gH = H - PAD.top  - PAD.bottom;
+
+      peakDown = Math.max(peakDown, ...downBuf);
+
+      const peak = Math.max(1, ...downBuf, ...upBuf);
+      const ceil = Math.ceil(peak / 5) * 5 || 5;
+
+      // Grid rows
+      ctx.font = '14px "Nixie One", monospace';
+      for (let i = 0; i <= 4; i++) {
+        const y   = PAD.top + (gH / 4) * i;
+        const val = ceil * (1 - i / 4);
+        ctx.strokeStyle = 'rgba(122,51,0,0.22)';
+        ctx.lineWidth   = 1;
+        ctx.setLineDash([3, 6]);
+        ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(PAD.left + gW, y); ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#7a3300';
+        ctx.textAlign = 'right';
+        ctx.fillText(val.toFixed(val < 10 ? 1 : 0), PAD.left - 6, y + 5);
+      }
+
+      // Grid columns
+      for (let i = 0; i <= SAMPLES; i += 10) {
+        const x = PAD.left + (gW / SAMPLES) * i;
+        ctx.strokeStyle = 'rgba(122,51,0,0.15)';
+        ctx.lineWidth   = 1;
+        ctx.setLineDash([2, 5]);
+        ctx.beginPath(); ctx.moveTo(x, PAD.top); ctx.lineTo(x, PAD.top + gH); ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      // X labels
+      ctx.fillStyle = '#7a3300';
+      ctx.font      = '14px "Nixie One", monospace';
+      ctx.textAlign = 'left';   ctx.fillText('−60s', PAD.left, H - 6);
+      ctx.textAlign = 'center'; ctx.fillText('−30s', PAD.left + gW / 2, H - 6);
+      ctx.textAlign = 'right';  ctx.fillText('now',  PAD.left + gW, H - 6);
+
+      // Peak marker
+      if (peakDown > 0) {
+        const py = PAD.top + gH - (peakDown / ceil) * gH;
+        if (py > PAD.top && py < PAD.top + gH) {
+          ctx.strokeStyle = 'rgba(255,102,0,0.3)';
+          ctx.lineWidth   = 1;
+          ctx.setLineDash([5, 8]);
+          ctx.beginPath(); ctx.moveTo(PAD.left, py); ctx.lineTo(PAD.left + gW, py); ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = 'rgba(255,102,0,0.4)';
+          ctx.font      = '14px "Nixie One", monospace';
+          ctx.textAlign = 'left';
+          ctx.fillText(`↓ peak  ${peakDown.toFixed(2)}`, PAD.left + 6, py - 4);
+        }
+      }
+
+      // Series
+      function drawSeries(buf, lineColor, fillColor) {
+        ctx.beginPath();
+        for (let i = 0; i < buf.length; i++) {
+          const x = PAD.left + (gW / (SAMPLES - 1)) * i;
+          const y = PAD.top  + gH - (buf[i] / ceil) * gH;
+          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.lineTo(PAD.left + gW, PAD.top + gH);
+        ctx.lineTo(PAD.left,      PAD.top + gH);
+        ctx.closePath();
+        ctx.fillStyle = fillColor; ctx.fill();
+
+        ctx.beginPath();
+        for (let i = 0; i < buf.length; i++) {
+          const x = PAD.left + (gW / (SAMPLES - 1)) * i;
+          const y = PAD.top  + gH - (buf[i] / ceil) * gH;
+          i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = lineColor; ctx.lineWidth = 1.5;
+        ctx.shadowColor = lineColor; ctx.shadowBlur = 8;
+        ctx.stroke(); ctx.shadowBlur = 0;
+      }
+
+      drawSeries(upBuf,   '#ff9944', 'rgba(255,153,68,0.06)');
+      drawSeries(downBuf, '#ff6600', 'rgba(255,102,0,0.10)');
+
+      // Hover crosshair + dots
+      if (hoverIdx >= 0 && hoverIdx < SAMPLES) {
+        const hx = PAD.left + (gW / (SAMPLES - 1)) * hoverIdx;
+        ctx.strokeStyle = 'rgba(255,102,0,0.3)';
+        ctx.lineWidth   = 1; ctx.setLineDash([3, 5]);
+        ctx.beginPath(); ctx.moveTo(hx, PAD.top); ctx.lineTo(hx, PAD.top + gH); ctx.stroke();
+        ctx.setLineDash([]);
+        [{ buf: downBuf, color: '#ff6600' }, { buf: upBuf, color: '#ff9944' }].forEach(({ buf, color }) => {
+          const hy = PAD.top + gH - ((buf[hoverIdx] || 0) / ceil) * gH;
+          ctx.beginPath(); ctx.arc(hx, hy, 3.5, 0, Math.PI * 2);
+          ctx.fillStyle = color; ctx.shadowColor = color; ctx.shadowBlur = 10;
+          ctx.fill(); ctx.shadowBlur = 0;
+        });
+      }
+
+      // Bottom-right live readout
+      const ld = downBuf[downBuf.length - 1];
+      const lu = upBuf[upBuf.length - 1];
+      ctx.font = '14px "Nixie One", monospace'; ctx.textAlign = 'right';
+      ctx.shadowBlur = 5;
+      ctx.fillStyle = '#ff6600'; ctx.shadowColor = '#ff6600';
+      ctx.fillText(`↓ ${ld.toFixed(2)} Mbps`, PAD.left + gW - 4, PAD.top + gH - 16);
+      ctx.fillStyle = '#ff9944'; ctx.shadowColor = '#ff9944';
+      ctx.fillText(`↑ ${lu.toFixed(2)} Mbps`, PAD.left + gW - 4, PAD.top + gH - 2);
+      ctx.shadowBlur = 0;
+    }
+
+    const netCanvas = id('net-graph');
+    const tooltip   = id('graph-tooltip');
+
+    netCanvas.addEventListener('mousemove', e => {
+      const rect = netCanvas.getBoundingClientRect();
+      const gW   = netCanvas.width - PAD.left - PAD.right;
+      const mx   = e.clientX - rect.left;
+      if (mx >= PAD.left && mx <= PAD.left + gW) {
+        hoverIdx = Math.round((mx - PAD.left) / gW * (SAMPLES - 1));
+        const ago = SAMPLES - 1 - hoverIdx;
+        const d = (downBuf[hoverIdx] || 0).toFixed(2);
+        const u = (upBuf[hoverIdx]   || 0).toFixed(2);
+        tooltip.style.display = 'block';
+        tooltip.innerHTML = `${ago === 0 ? 'now' : ago + 's ago'} &nbsp;|&nbsp; ↓ ${d} &nbsp; ↑ ${u} Mbps`;
+        let tx = mx + 14;
+        let ty = (e.clientY - rect.top) - 36;
+        if (tx + 210 > netCanvas.offsetWidth) tx = mx - 220;
+        if (ty < 4) ty = 4;
+        tooltip.style.left = tx + 'px';
+        tooltip.style.top  = ty + 'px';
+      } else {
+        hoverIdx = -1;
+        tooltip.style.display = 'none';
+      }
+      drawNetGraph();
+    });
+
+    netCanvas.addEventListener('mouseleave', () => {
+      hoverIdx = -1;
+      tooltip.style.display = 'none';
+      drawNetGraph();
+    });
+
+    function update(d) {
+      downBuf.shift(); downBuf.push(d.down || 0);
+      upBuf.shift();   upBuf.push(d.up   || 0);
+      cpuBuf.shift();  cpuBuf.push(d.cpu || 0);
+      pingBuf.shift(); pingBuf.push(d.ping > 0 ? d.ping : 0);
+      if (d.ram_used && d.ram_total)
+        { ramBuf.shift(); ramBuf.push(d.ram_used / d.ram_total * 100); }
+
+      drawNetGraph();
+      refreshSparklines();
+
+      set(id('down'),      d.down      > 0 ? d.down.toFixed(2)        : '--.--');
+      set(id('up'),        d.up        > 0 ? d.up.toFixed(2)          : '--.--');
+      set(id('ping'),      d.ping      > 0 ? Math.round(d.ping)       : '---');
+      set(id('cpu'),       d.cpu       > 0 ? d.cpu.toFixed(1)         : '--.-');
+      set(id('ram'),       d.ram_used && d.ram_total
+                             ? `${d.ram_used} / ${d.ram_total} GB`    : '-- / -- GB');
+      set(id('diskspace'), d.disk_space > 0 ? Math.round(d.disk_space) : '--');
+      set(id('diskread'),  d.disk_read  > 0 ? d.disk_read.toFixed(1)  : '--.--');
+      set(id('diskwrite'), d.disk_write > 0 ? d.disk_write.toFixed(1) : '--.--');
+      set(id('localip'),   d.local_ip);
+      set(id('publicip'),  d.public_ip);
+      set(id('cpufreq'),   d.cpu_freq  > 0 ? d.cpu_freq.toFixed(2)    : '-.--');
+      set(id('processes'), d.processes > 0 ? d.processes              : '---');
+      set(id('swap'),      d.swap_used != null && d.swap_total != null
+                             ? `${d.swap_used} / ${d.swap_total} GB`  : '-- / -- GB');
+      set(id('tcpconns'),  d.tcp_conns >= 0   ? d.tcp_conns           : '--');
+
+      const ts = d.ts;
+      if (ts && ts.length >= 19) {
+        set(id('dt-year'), ts.slice(0,  4));
+        set(id('dt-mon'),  ts.slice(5,  7));
+        set(id('dt-day'),  ts.slice(8,  10));
+        set(id('dt-hr'),   ts.slice(11, 13));
+        set(id('dt-min'),  ts.slice(14, 16));
+        set(id('dt-sec'),  ts.slice(17, 19));
+      }
+    }
+
+    window.addEventListener('resize', () => { drawNetGraph(); refreshSparklines(); });
+    drawNetGraph();
+
+const loading = id('loading');
+const loadingMsg = id('loading-msg');
+let gotFirstSample = false;
+
+function hideLoading(){
+  if (!loading || gotFirstSample) return;
+  gotFirstSample = true;
+  loading.classList.add('hide');
+  setTimeout(() => { loading.style.display = 'none'; }, 500);
+}
+
+
+let src = null;
+
+function connectSSE(){
+  if (src) { try { src.close(); } catch(e) {} src = null; }
+
+  if (loadingMsg && !gotFirstSample) loadingMsg.textContent = 'Tube warm‑up';
+
+  src = new EventSource('stream'); // keep relative like your original [file:1]
+
+  src.onmessage = (e) => {
+    update(JSON.parse(e.data));
+    if (loadingMsg && !gotFirstSample) loadingMsg.textContent = 'Syncing';
+    hideLoading();
+  };
+
+  src.onerror = () => {
+    if (loadingMsg && !gotFirstSample) loadingMsg.textContent = 'Re‑igniting';
+    try { src.close(); } catch(e) {}
+    src = null;
+    setTimeout(connectSSE, 3000);
+  };
+}
+
+
+connectSSE();
+
+  </script>
+</body>
+</html>
