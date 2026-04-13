@@ -8,7 +8,7 @@ Displays real-time stats: CPU, RAM, disk, network speed, ping, swap, TCP connect
 
 ## Screenshot
 
-![Nixie Dashboard](https://raw.githubusercontent.com/JohnSina86/Nixie/feature/installer/screenshot.jpg)
+![Nixie Dashboard](https://raw.githubusercontent.com/JohnSina86/Nixie/main/screenshot.jpg)
 
 ---
 
